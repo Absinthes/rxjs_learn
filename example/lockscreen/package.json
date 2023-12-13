@@ -1,0 +1,16 @@
+{
+  "name": "lockscreen",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "vite"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "rxjs": "^7.8.1",
+    "vite": "^5.0.7"
+  }
+}
