@@ -85,5 +85,3 @@ const actualPassword$ = fromEvent(document, "mousedown").pipe(
 );
 
 merge(expectedPassword$, expectedPasswordUpdate$, actualPassword$).subscribe();
-
-console.log(111111)

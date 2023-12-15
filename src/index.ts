@@ -1,30 +1,64 @@
-import { from, map, pairwise, scan } from "rxjs";
+import { scan, timer } from "rxjs";
 
-const priceHistories = [100, 98, 96, 102, 99, 105, 105];
+const createElem = (drop) => {
+  const elem = document.createElement("div");
+  elem.style.position = "absolute";
+  elem.style.top = drop.y + "px";
+  elem.style.left = drop.x + "px";
+  elem.style.fontSize = "12px";
+  elem.innerHTML = drop.d.reduce((acc, c) => (acc += "<br/>" + c), "");
+  elem.style["color"] = `rgb(21, ${100 + drop.d.length * 10}, 21)`;
+  return elem;
+};
 
-const source$ = from(priceHistories).pipe(
-  pairwise(),
-  map(([yesterdayPrice, todayPrice], idx) => ({
-    day: idx + 2,
-    todayPrice,
-    priceUp: todayPrice > yesterdayPrice,
-    priceDown: todayPrice < yesterdayPrice,
-  })),
-  scan(
-    (acc, it) => ({
-      ...it,
-      priceBelow100Days: acc.priceBelow100Days + (it.todayPrice < 100 ? 1 : 0),
-    }),
-    {
-      day: 1,
-      todayPrice: 0,
-      priceUp: false,
-      priceDown: false,
-      priceBelow100Days: 0,
-    }
-  )
-);
+export const render = (matrix) => {
+  document.body.innerHTML = "";
+  const container = document.createElement("div");
+  container.style.position = "relative";
+  // container.style.overflow = "hidden";
+  matrix.forEach((m) => container.appendChild(createElem(m)));
+  document.body.appendChild(container);
+};
 
-source$.subscribe((it) => {
-  console.log(it);
+type Drop = {
+  x: number;
+  y: number;
+  d: string[];
+  remove: boolean;
+};
+
+const createDrop = (x: number, y: number): Drop => ({
+  x,
+  y,
+  d: [],
+  remove: false,
 });
+const random = (max: number) => Math.random() * Math.random() * max;
+const ranodmChar = () => String.fromCharCode(random(128));
+
+const markForRemoval = (matrix: Drop[]) => {
+  matrix.forEach((drop) => {
+    drop.remove = drop.remove ? true : drop.d.length > 30;
+  });
+};
+
+const updateDrops = (matrix: Drop[]) => {
+  matrix.forEach((drop) => {
+    drop.d = drop.remove
+      ? drop.d.slice(1).map(() => ranodmChar())
+      : [...drop.d, ranodmChar()];
+  });
+};
+
+const updateMatrix = (matrix: Drop[]) => [
+  ...matrix,
+  createDrop(random(window.innerWidth), random(window.innerHeight)),
+];
+
+timer(0, 1000 / 60)
+  .pipe(
+    scan<number, Drop[]>((matrix) => {
+      return markForRemoval(matrix), updateDrops(matrix), updateMatrix(matrix);
+    }, [])
+  )
+  .subscribe(render);
