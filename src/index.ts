@@ -1,64 +1,46 @@
-import { scan, timer } from "rxjs";
+import {
+  fromEvent,
+  interval,
+  map,
+  repeat,
+  scan,
+  switchMap,
+  takeWhile,
+  tap,
+} from "rxjs";
+import {
+  dot,
+  moveDot,
+  resetDotSize,
+  setTimerText,
+  updatedDot,
+} from "./dom-updater";
 
-const createElem = (drop) => {
-  const elem = document.createElement("div");
-  elem.style.position = "absolute";
-  elem.style.top = drop.y + "px";
-  elem.style.left = drop.x + "px";
-  elem.style.fontSize = "12px";
-  elem.innerHTML = drop.d.reduce((acc, c) => (acc += "<br/>" + c), "");
-  elem.style["color"] = `rgb(21, ${100 + drop.d.length * 10}, 21)`;
-  return elem;
-};
+interface State {
+  score: number;
+  intrvl: number;
+}
 
-export const render = (matrix) => {
-  document.body.innerHTML = "";
-  const container = document.createElement("div");
-  container.style.position = "relative";
-  // container.style.overflow = "hidden";
-  matrix.forEach((m) => container.appendChild(createElem(m)));
-  document.body.appendChild(container);
-};
+const state: State = { score: 0, intrvl: 500 };
 
-type Drop = {
-  x: number;
-  y: number;
-  d: string[];
-  remove: boolean;
-};
-
-const createDrop = (x: number, y: number): Drop => ({
-  x,
-  y,
-  d: [],
-  remove: false,
+const nextState = (acc: State) => ({
+  score: acc.score + 1,
+  intrvl: acc.intrvl,
 });
-const random = (max: number) => Math.random() * Math.random() * max;
-const ranodmChar = () => String.fromCharCode(random(128));
 
-const markForRemoval = (matrix: Drop[]) => {
-  matrix.forEach((drop) => {
-    drop.remove = drop.remove ? true : drop.d.length > 30;
-  });
-};
+const interval$ = (state) =>
+  interval(state.intrvl).pipe(
+    map((v) => 5 - v),
+    tap(setTimerText)
+  );
 
-const updateDrops = (matrix: Drop[]) => {
-  matrix.forEach((drop) => {
-    drop.d = drop.remove
-      ? drop.d.slice(1).map(() => ranodmChar())
-      : [...drop.d, ranodmChar()];
-  });
-};
+const game$ = fromEvent(dot, "mouseover").pipe(
+  tap(moveDot),
+  scan(nextState, state),
+  tap((state) => updatedDot(state.score)),
+  switchMap(interval$),
+  tap(resetDotSize),
+  takeWhile((inteval) => inteval >= 0)
+);
 
-const updateMatrix = (matrix: Drop[]) => [
-  ...matrix,
-  createDrop(random(window.innerWidth), random(window.innerHeight)),
-];
-
-timer(0, 1000 / 60)
-  .pipe(
-    scan<number, Drop[]>((matrix) => {
-      return markForRemoval(matrix), updateDrops(matrix), updateMatrix(matrix);
-    }, [])
-  )
-  .subscribe(render);
+game$.subscribe();
